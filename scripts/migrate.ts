@@ -17,7 +17,7 @@ import { Pool } from "@neondatabase/serverless";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { checksumDrift, checksumOf, listMigrationFiles, migrationNumber, planMigrations } from "./migration-plan";
-import { migrationDefinerGuardSql, definerMigrationViolations, guardedMigration } from "./security-definer-policy";
+import { migrationDefinerGuardSql, migrationDefinerViolations, guardedMigration } from "./security-definer-policy";
 
 const url = process.env["MIGRATION_URL"];
 if (!url) {
@@ -70,7 +70,7 @@ try {
       continue;
     }
     const body = readFileSync(join(dir, file), "utf8");
-    const lint = guardedMigration(file) ? definerMigrationViolations(body) : [];
+    const lint = guardedMigration(file) ? migrationDefinerViolations(file, body) : [];
     if (lint.length > 0) {
       console.error(`✗ ${file}: ${lint.join("; ")}`);
       process.exitCode = 1;

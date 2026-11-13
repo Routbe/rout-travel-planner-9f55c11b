@@ -16,6 +16,8 @@ import {
   definerGuardSql,
   definerKey,
   definerMigrationViolations,
+  migrationDefinerViolations,
+  pinnedAfter,
   guardedMigration,
   isSecurityDefinerDef,
   searchPathFromConfig,
@@ -127,21 +129,23 @@ const BATCH_3 = [
 ];
 
 describe("SECURITY DEFINER functions in the schema snapshot", () => {
-  it("are pinned to pg_catalog unless on the legacy list, and the list has no stale entries", () => {
+  it("are all pinned to pg_catalog, pg_temp and the legacy list is empty", () => {
     expect(definers.length).toBeGreaterThan(300);
     expect(definerFindings(definers, LEGACY_DEFINER_SEARCH_PATH)).toEqual([]);
   });
 
-  it("batches 1 (cards, vault, sign-in), 2 (workspaces, parents, agents) and 3 (bookings) are pinned and off the legacy list; 48 remain", () => {
+  it("batches 1 (cards, vault, sign-in), 2 (workspaces, parents, agents), 3 (bookings) and 4 (the rest) are pinned; none remain", () => {
     expect(BATCH_1).toHaveLength(21);
     expect(BATCH_2).toHaveLength(36);
     expect(BATCH_3).toHaveLength(31);
     for (const key of [...BATCH_1, ...BATCH_2, ...BATCH_3]) {
-      expect(definers.find((f) => f.key === key)?.searchPath, key).toEqual(["pg_catalog"]);
+      expect(definers.find((f) => f.key === key)?.searchPath, key).toEqual(["pg_catalog", "pg_temp"]);
       expect(LEGACY_DEFINER_SEARCH_PATH, key).not.toContain(key);
     }
-    expect(LEGACY_DEFINER_SEARCH_PATH).toHaveLength(48);
-    expect(new Set(LEGACY_DEFINER_SEARCH_PATH).size).toBe(48);
+    expect(HARDENED_BY_MIGRATION[258]).toHaveLength(48);
+    expect(new Set(HARDENED_BY_MIGRATION[258]).size).toBe(48);
+    expect(LEGACY_DEFINER_SEARCH_PATH).toEqual([]);
+    for (const f of definers) expect(f.searchPath, f.key).toEqual(["pg_catalog", "pg_temp"]);
   });
 
   it("records each hardened batch under its migration, so a fresh replay allows it only until then", () => {
@@ -156,19 +160,22 @@ describe("SECURITY DEFINER functions in the schema snapshot", () => {
     const after256 = legacyAllowedAfter(256);
     for (const key of BATCH_3) expect(after256, key).toContain(key);
     for (const key of BATCH_2) expect(after256, key).not.toContain(key);
-    expect(legacyAllowedAfter(257)).toEqual(LEGACY_DEFINER_SEARCH_PATH);
+    expect([...legacyAllowedAfter(257)].sort()).toEqual([...HARDENED_BY_MIGRATION[258]!].sort());
+    expect(legacyAllowedAfter(258)).toEqual([]);
     const files = listMigrationFiles(DB_DIR);
     for (const n of Object.keys(HARDENED_BY_MIGRATION)) {
       const file = files.find((f) => f.startsWith(`0${n}_`));
       expect(file, n).toBeDefined();
-      const altered = [...readFileSync(join(DB_DIR, file!), "utf8").matchAll(/^(?:alter|create or replace) function public\.(\w+)\(/gim)].map((m) => m[1]).sort();
+      // 0258 also names pg_temp on the 300 already-pinned definers; its batch is the first section.
+      const text = readFileSync(join(DB_DIR, file!), "utf8").split("-- Already pinned to pg_catalog")[0]!;
+      const altered = [...text.matchAll(/^(?:alter|create or replace) function public\.(\w+)\(/gim)].map((m) => m[1]).sort();
       expect(altered, file).toEqual(HARDENED_BY_MIGRATION[Number(n)]!.map((k) => k.match(/^public\.(\w+)\(/)?.[1]).sort());
     }
   });
 
   it("vault_enclave has no exception at all", () => {
     expect(LEGACY_DEFINER_SEARCH_PATH.filter((k) => k.startsWith("vault_enclave."))).toEqual([]);
-    expect(definers.filter((f) => f.key.startsWith("vault_enclave.")).every((f) => f.searchPath?.join() === "pg_catalog")).toBe(true);
+    expect(definers.filter((f) => f.key.startsWith("vault_enclave.")).every((f) => f.searchPath?.join() === "pg_catalog,pg_temp")).toBe(true);
   });
 
   it("flags an unpinned function that is not listed, and a listed function that is already pinned", () => {
@@ -177,7 +184,10 @@ describe("SECURITY DEFINER functions in the schema snapshot", () => {
     ]);
     expect(definerFindings([{ key: "public.x()", searchPath: ["pg_catalog", "public"] }], [])[0]?.problem).toBe("not_pinned");
     expect(definerFindings([{ key: "public.x()", searchPath: null }], [])[0]?.problem).toBe("not_pinned");
-    expect(definerFindings([{ key: "public.x()", searchPath: ["pg_catalog"] }], ["public.x()"])).toEqual([
+    expect(definerFindings([{ key: "public.x()", searchPath: ["pg_catalog"] }], [])[0]?.problem).toBe("not_pinned");
+    expect(definerFindings([{ key: "public.x()", searchPath: ["pg_temp", "pg_catalog"] }], [])[0]?.problem).toBe("not_pinned");
+    expect(definerFindings([{ key: "public.x()", searchPath: ["pg_catalog"] }], [], pinnedAfter(257))).toEqual([]);
+    expect(definerFindings([{ key: "public.x()", searchPath: ["pg_catalog", "pg_temp"] }], ["public.x()"])).toEqual([
       { problem: "stale_legacy_entry", key: "public.x()" },
     ]);
   });
@@ -194,11 +204,24 @@ describe("SECURITY DEFINER functions in the schema snapshot", () => {
 describe("migration files from 0255 on", () => {
   const guarded = listMigrationFiles(DB_DIR).filter(guardedMigration);
 
-  it("include 0255, 0256 and 0257 and none sets a search_path other than pg_catalog", () => {
+  it("include 0255-0258; each is linted by the rule in force at its number", () => {
     expect(guarded).toContain("0255_definer_search_path_cards_vault_auth.sql");
     expect(guarded).toContain("0256_definer_search_path_workspaces_parents_agents.sql");
     expect(guarded).toContain("0257_definer_search_path_bookings.sql");
-    for (const file of guarded) expect(definerMigrationViolations(readFileSync(join(DB_DIR, file), "utf8")), file).toEqual([]);
+    expect(guarded).toContain("0258_definer_search_path_rest_and_pg_temp.sql");
+    for (const file of guarded) expect(migrationDefinerViolations(file, readFileSync(join(DB_DIR, file), "utf8")), file).toEqual([]);
+    // From 0258 on the bare pg_catalog form is rejected.
+    expect(migrationDefinerViolations("0259_x.sql", "alter function public.a() set search_path = pg_catalog;")).toHaveLength(1);
+    expect(migrationDefinerViolations("0257_x.sql", "alter function public.a() set search_path = pg_catalog;")).toEqual([]);
+  });
+
+  it("0258 only sets search_path = pg_catalog, pg_temp, once for every SECURITY DEFINER function in the snapshot", () => {
+    const sql = readFileSync(join(DB_DIR, "0258_definer_search_path_rest_and_pg_temp.sql"), "utf8").replace(/--[^\n]*/g, "");
+    const statements = sql.split(";").map((s) => s.trim()).filter(Boolean);
+    expect(statements).toHaveLength(definers.length);
+    const keys = statements.map((s) => s.match(/^alter function (.+) set search_path = pg_catalog, pg_temp$/)?.[1]);
+    expect(keys.every(Boolean)).toBe(true);
+    expect([...keys].sort()).toEqual(definers.map((f) => f.key).sort());
   });
 
   it("0255 only changes search_path settings and one PUBLIC grant", () => {
@@ -235,9 +258,11 @@ describe("migration files from 0255 on", () => {
     expect(definerMigrationViolations("create or replace function public.a() returns int language sql security definer set search_path = public as $$ select 1 $$;").length).toBeGreaterThan(0);
     expect(definerMigrationViolations("alter function public.a() set search_path = public, pg_temp;")).toHaveLength(1);
     expect(definerMigrationViolations("create function public.a() returns int language plpgsql as $$ begin set local search_path to public; return 1; end $$;")).toHaveLength(1);
-    expect(definerMigrationViolations("create function public.a() returns int language sql security definer set search_path = pg_catalog as $$ select 1 $$;")).toEqual([]);
-    expect(definerMigrationViolations("create function public.a() returns int language sql set search_path = pg_catalog security definer as $$ select 1 $$;")).toEqual([]);
-    expect(definerMigrationViolations("alter function public.a() set search_path = pg_catalog;")).toEqual([]);
+    expect(definerMigrationViolations("create function public.a() returns int language sql security definer set search_path = pg_catalog, pg_temp as $$ select 1 $$;")).toEqual([]);
+    expect(definerMigrationViolations("create function public.a() returns int language sql set search_path = pg_catalog, pg_temp security definer as $$ select 1 $$;")).toEqual([]);
+    expect(definerMigrationViolations("alter function public.a() set search_path = pg_catalog, pg_temp;")).toEqual([]);
+    expect(definerMigrationViolations("alter function public.a() set search_path = pg_catalog;")).toHaveLength(1);
+    expect(definerMigrationViolations("alter function public.a() set search_path = pg_catalog;", 257)).toEqual([]);
   });
 });
 
@@ -245,13 +270,17 @@ describe("the runner guard inside a migration transaction", () => {
   it("raises for an unlisted unpinned definer and passes for pinned or listed ones", async () => {
     const db = new PGlite();
     try {
-      await db.exec(`create function public.pinned() returns int language sql security definer set search_path = pg_catalog as $$ select 1 $$;
+      await db.exec(`create function public.pinned() returns int language sql security definer set search_path = pg_catalog, pg_temp as $$ select 1 $$;
         create function public.listed(p int) returns int language sql security definer set search_path = public as $$ select p $$;
         create function public.invoker() returns int language sql set search_path = public as $$ select 1 $$;`);
       await expect(db.exec(definerGuardSql(["public.listed(p integer)"]))).resolves.toBeDefined();
       await expect(db.exec(definerGuardSql([]))).rejects.toThrow(/public\.listed\(p integer\)/);
       await db.exec("create function public.sneaky() returns int language sql security definer set search_path = public, pg_temp as $$ select 1 $$;");
-      await expect(db.exec(definerGuardSql(["public.listed(p integer)"]))).rejects.toThrow(/SECURITY DEFINER without search_path = pg_catalog: public\.sneaky\(\)/);
+      await expect(db.exec(definerGuardSql(["public.listed(p integer)"]))).rejects.toThrow(/SECURITY DEFINER without search_path = pg_catalog, pg_temp: public\.sneaky\(\)/);
+      await db.exec("drop function public.sneaky(); create function public.bare() returns int language sql security definer set search_path = pg_catalog as $$ select 1 $$;");
+      // The bare form of 0255-0257 passes only the guard that runs before 0258.
+      await expect(db.exec(definerGuardSql(["public.listed(p integer)"], false))).resolves.toBeDefined();
+      await expect(db.exec(definerGuardSql(["public.listed(p integer)"]))).rejects.toThrow(/public\.bare\(\)/);
     } finally {
       await db.close();
     }
@@ -502,4 +531,84 @@ describe("batch 3 booking functions after 0257 (all migrations replayed)", () =>
       await db.close();
     }
   }, 180_000);
+});
+
+describe("batch 4 and pg_temp after 0258 (all migrations replayed)", () => {
+  it("0258 changes only the search_path line, every definer ends on pg_catalog, pg_temp, and the last 48 resolve every name they reach", async () => {
+    const { btree_gist } = await import("@electric-sql/pglite/contrib/btree_gist");
+    const { pgcrypto } = await import("@electric-sql/pglite/contrib/pgcrypto");
+    const { planMigrations } = await import("../../scripts/migration-plan");
+    const db = new PGlite({ extensions: { pgcrypto, btree_gist } });
+    const REST = "0258_definer_search_path_rest_and_pg_temp.sql";
+    const definerDefs = async () =>
+      new Map(
+        (await db.query<{ k: string; d: string }>(
+          `select n.nspname || '.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' as k, pg_get_functiondef(p.oid) as d
+             from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+            where p.prosecdef and n.nspname not in ('pg_catalog', 'information_schema')
+              and not exists (select 1 from pg_depend x where x.classid = 'pg_proc'::regclass and x.objid = p.oid and x.deptype = 'e')`,
+        )).rows.map((r) => [r.k, r.d]),
+      );
+    try {
+      for (const step of planMigrations(listMigrationFiles(DB_DIR), new Set())) {
+        if (step.action === "run" && step.file !== REST) await db.exec(`begin;\n${readFileSync(join(DB_DIR, step.file), "utf8")}\n;commit;`);
+      }
+      const before = await definerDefs();
+      await db.exec(`begin;\n${readFileSync(join(DB_DIR, REST), "utf8")}\n;commit;`);
+      const after = await definerDefs();
+      expect(after.size).toBe(before.size);
+      const strip = (d: string) => d.replace(/^ SET search_path TO .*$/m, "");
+      for (const [k, d] of before) {
+        expect(strip(after.get(k)!), k).toBe(strip(d));
+        expect(searchPathFromDef(after.get(k)!), k).toEqual(["pg_catalog", "pg_temp"]);
+      }
+      await expect(db.exec(definerGuardSql([]))).resolves.toBeDefined();
+
+      // Call every batch 4 function (triggers excepted) with empty and with sample
+      // arguments. Business errors are fine; an unresolved table, function, type,
+      // column or schema is not.
+      const UNRESOLVED = new Set(["42P01", "42883", "42704", "42703", "3F000"]);
+      const sample: Record<string, string> = {
+        text: "'x'", uuid: "'00000000-0000-4000-8000-0000000000c1'::uuid", integer: "1", bigint: "1", boolean: "true",
+        "timestamp with time zone": "now() + interval '1 hour'", jsonb: "'{}'::jsonb", "text[]": "'{}'::text[]",
+      };
+      const fns = (
+        await db.query<{ k: string; fn: string; types: string[]; trig: boolean }>(
+          `select p.oid::regprocedure::text as k, p.oid::regproc::text as fn,
+                  coalesce(array(select pg_catalog.format_type(t, null) from unnest(p.proargtypes) t), '{}') as types,
+                  p.prorettype = 'trigger'::regtype as trig
+             from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosecdef`,
+        )
+      ).rows;
+      const batch4 = new Set(HARDENED_BY_MIGRATION[258]!.map((k) => k.match(/^public\.(\w+)\(/)![1]));
+      const called: string[] = [];
+      const problems: string[] = [];
+      await db.exec("begin");
+      try {
+        for (const f of fns) {
+          const name = f.fn.replace(/^public\./, "");
+          if (!batch4.has(name) || f.trig) continue;
+          called.push(name);
+          for (const variant of ["null", "sample"]) {
+            const args = f.types.map((t) => (variant === "null" ? `null::${t}` : sample[t] ?? `null::${t}`)).join(", ");
+            await db.exec("savepoint s");
+            try {
+              await db.query(`select * from public.${name}(${args})`);
+            } catch (error) {
+              const code = (error as { code?: string }).code ?? "";
+              if (UNRESOLVED.has(code)) problems.push(`${f.k} [${variant}]: ${code} ${(error as Error).message}`);
+            }
+            await db.exec("rollback to savepoint s");
+          }
+        }
+      } finally {
+        await db.exec("rollback");
+      }
+      expect(problems).toEqual([]);
+      // enforce_short_link_limits and rout_shadow_mute_trust are triggers; the other 46 are called.
+      expect(new Set(called).size).toBe(batch4.size - 2);
+    } finally {
+      await db.close();
+    }
+  }, 240_000);
 });
