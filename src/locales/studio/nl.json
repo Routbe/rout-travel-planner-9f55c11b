@@ -507,6 +507,7 @@
   "booking.err.slug_taken": "Deze korte naam is al in gebruik.",
   "booking.err.generic": "Er ging iets mis. Probeer opnieuw.",
   "booking.err.invalid": "Controleer de velden.",
+  "booking.err.rateLimited": "Je hebt je agenda's dit uur al vaak toegevoegd of ververst. Probeer het later opnieuw.",
   "booking.avail.intro": "Je wekelijkse uren, in jouw tijdzone.",
   "booking.avail.timezone": "Tijdzone",
   "booking.avail.closed": "Gesloten",

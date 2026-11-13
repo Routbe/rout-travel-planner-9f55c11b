@@ -507,6 +507,7 @@
   "booking.err.slug_taken": "Dieser Kurzname ist vergeben.",
   "booking.err.generic": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
   "booking.err.invalid": "Bitte Felder prüfen.",
+  "booking.err.rateLimited": "Du hast deine Kalender in dieser Stunde schon oft hinzugefügt oder aktualisiert. Versuche es später erneut.",
   "booking.avail.intro": "Deine Wochenzeiten, in deiner Zeitzone.",
   "booking.avail.timezone": "Zeitzone",
   "booking.avail.closed": "Geschlossen",

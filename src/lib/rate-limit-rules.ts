@@ -12,6 +12,8 @@ export const RATE_RULES = {
   qrUpload: { limit: 20, windowSec: 60 },
   shortLink: { limit: 120, windowSec: 60 },
   bookingMail: { limit: 10, windowSec: 3600 },
+  /** Adding or refreshing an outside calendar makes the server fetch a member-chosen address. */
+  calendarFetch: { limit: 20, windowSec: 3600 },
   oauthAuthorize: { limit: 30, windowSec: 60 },
 } satisfies Record<string, RateRule>;
 
