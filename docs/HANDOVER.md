@@ -222,3 +222,14 @@ Bijlage G — batch 4 en het pg_temp-beleid (2026-11-13; de tekst hierboven is o
 - Afdwinging: `scripts/security-definer-policy.ts` accepteert vanaf migratie 0258 alleen `pg_catalog, pg_temp` (0255-0257 mogen in de replay nog de oude vorm hebben); `LEGACY_DEFINER_SEARCH_PATH` is leeg, batch 4 staat onder `HARDENED_BY_MIGRATION[258]`. Test: na het afspelen van alle migraties verandert 0258 niets dan de zoekpad-regel, en de 46 niet-trigger-functies van batch 4 worden aangeroepen zonder een onopgeloste naam.
 - Live op Neon toegepast in één transactie met telcontrole vooraf (348 functies, 48 open) en achteraf (0 open), plus de logboekregel. Daarna: 348 functies op `pg_catalog, pg_temp`, eigenaars en uitvoerrechten ongewijzigd, rollidmaatschappen ongewijzigd, `schema_migrations` 255 rijen, schemaniveau `0258`. Proefaanroepen als `rout_app` (alleen lezen) slaagden.
 - Volledige suite: 466 testbestanden, 2786 tests geslaagd.
+
+---
+
+Bijlage H — nacontrole na 0258 en de rechtencorrectie 0259 (2026-11-13)
+
+- Nacontrole groep 3 (open punt uit de vorige sessie): de 33 `rout_booking_*`-functies op Neon hebben dezelfde inhoud als de schemakopie en dezelfde eigenaar en uitvoerrechten als een volledige herbouw uit `db/`. `rout_booking_hold` en `rout_booking_zone` hebben hun rechten behouden.
+- Migratiegeschiedenis: `bun scripts/migration-history-check.ts --applied=<Neon-rijen>` meldt 255 toegepaste migraties en 0 afwijkingen.
+- Productie (`https://rout.be/api/public/health`) meldt schemaniveau `0253`. 0254-0258 veranderen alleen zoekpaden en zijn verenigbaar met die code.
+- Bevinding: Neon's standaardrechten (db/53, deel 5) geven `rout_app` EXECUTE op elke nieuwe functie. Interne hulpfuncties waarvan de migratie alleen PUBLIC introk, zijn daardoor op Neon rechtstreeks aanroepbaar door de app-rol: `rout_audit_insert` (beheerderslog schrijven met een willekeurig beheerders-id), `rout_phone_mark_verified` (een nummer verifiëren zonder code), `rout_psp_public_owner`, `rout_qa_owner`, `feedback_form_is_public`, `profile_event_is_public` en de trigger `rout_physical_key_audit`. Daarnaast had `execute_account_merge` op Neon weer EXECUTE voor PUBLIC, wat 0152 had ingetrokken. Geen app-code (ook niet de productieversie op niveau 0253) roept deze hulpfuncties aan; ze worden alleen aangeroepen vanuit SECURITY DEFINER-ingangen of als trigger.
+- `db/0259_definer_execute_least_privilege.sql` trekt die rechten in en controleert dat binnen de transactie; `rout_app` houdt `execute_account_merge` en `workspace_may_drop_suffix` (die laatste wordt door invoker-triggers aangeroepen). Test: `src/test/definer-execute-grants.test.ts`.
+- Nog open: bij een herbouw uit `db/` krijgen 20 SECURITY DEFINER-functies EXECUTE voor PUBLIC waar Neon dat niet heeft, en `workspace_may_drop_suffix` mist er EXECUTE voor `rout_app`. Neon zelf is daar strenger; een herbouwde database niet.
