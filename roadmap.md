@@ -35,6 +35,9 @@
 - [x] db/0249 (drop station-less export marker) moved into db/ after production reported 0248
 - [x] db/0250 card tap as step-up factor (EXPAND, live on Neon)
 
+## Beveiligingsmelding agenda's
+- [ ] Agenda toevoegen/verversen: max 20 per lid per uur (gedeelde teller, faalt dicht), melding in nl/en/fr/de + test
+
 ## Admin portal and Studio routing
 - [x] Admin portal refuses non-admins in the UI itself (adminAccessDecision + AdminForbidden screen, nl/en/fr/de); server checks unchanged
 - [x] /studio/booking lands on the bookings page: /studio accepts page=booking (src/lib/studio-page-param.ts) and Studio opens bookings from that routed value
@@ -52,8 +55,8 @@
 - [x] Batch 4 — de laatste 48 functies + pg_temp op alle 348 (db/0258, live op Neon, 0 open)
 - [x] Rechtencorrectie interne hulpfuncties (db/0259, live op Neon, per functie nagekeken)
 - [x] Herbouw uit db/ gelijk aan Neon voor alle functierechten (db/0260, op Neon aantoonbaar zonder effect)
-- [ ] db/0261 — drie ongebruikte SECURITY DEFINER-functies weg bij rout_app + samenvoegen met de handle van het tweede account herstellen — wacht op GO van de eigenaar
-- [ ] 17 tabellen/reeksen waar rout_app op Neon meer mag dan in db/ — per tabel schrijvende code nagaan (CONTRACT)
+- [ ] db/0261 — drie ongebruikte SECURITY DEFINER-functies weg bij rout_app + samenvoegen met de handle van het tweede account herstellen — GO eigenaar 2026-11-13, live uitvoeren
+- [ ] 17 tabellen/reeksen waar rout_app op Neon meer mag dan in db/ — per tabel schrijvende code nagaan (CONTRACT); GO voor onderzoek, verslag per tabel + SQL-voorstel voor echt alleen-lezen tabellen
 - [x] Briefing in appendix van docs/HANDOVER.md (bijlage B letterlijk, bijlage C controle)
 - [x] QA-testdraaiboek: docs/ROUT-QA-draaiboek.md (kopie in Files)
 - [x] /t-schermen en knoppen in nl/en/fr/de (cardTap.* in interface-bundels); zegel "Authentic ROUT Card" blijft bewust Engels
