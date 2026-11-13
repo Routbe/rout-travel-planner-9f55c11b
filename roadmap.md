@@ -36,7 +36,7 @@
 - [x] db/0250 card tap as step-up factor (EXPAND, live on Neon)
 
 ## Beveiligingsmelding agenda's
-- [ ] Agenda toevoegen/verversen: max 20 per lid per uur (gedeelde teller, faalt dicht), melding in nl/en/fr/de + test
+- [x] Agenda toevoegen/verversen: max 20 per lid per uur (gedeelde teller, faalt dicht), melding in nl/en/fr/de + test
 
 ## Admin portal and Studio routing
 - [x] Admin portal refuses non-admins in the UI itself (adminAccessDecision + AdminForbidden screen, nl/en/fr/de); server checks unchanged

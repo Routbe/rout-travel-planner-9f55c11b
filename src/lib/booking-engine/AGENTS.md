@@ -11,3 +11,4 @@
 - App code detects phase-2 schema at runtime (`phase` in the public type, `to_regclass('booking_holds')` for saves) instead of assuming it. Why: code may deploy before a reviewed migration is applied on Neon.
 - Group sessions (shared seats) reach the slot list via db/0219 `rout_booking_public_sessions`: overlapping starts are hidden, the session's own start only while bookings + others' holds leave a seat. Why: the list must offer exactly what `rout_booking_host_free_held` accepts.
 - `calendar_events` is owner-scoped through `connected_calendars` (db/0220); only the definer booking checks read other hosts' busy times. Why: one member's calendar must never be readable in another member's session.
+- Adding or manually refreshing an outside calendar first passes `allowCalendarFetch` (per-member shared counter, RATE_RULES.calendarFetch, fail-closed). Why: a member chooses the address the server fetches, so the number of fetches must be capped too.
