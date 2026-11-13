@@ -50,6 +50,8 @@
 - [x] Batch 3 — boekingen: 31 functies (db/0257, live op Neon, 48 over)
 - [x] pg_temp-beleid: pg_catalog, pg_temp voor elke SECURITY DEFINER-functie (besluit eigenaar)
 - [x] Batch 4 — de laatste 48 functies + pg_temp op alle 348 (db/0258, live op Neon, 0 open)
+- [ ] Rechtencorrectie interne hulpfuncties (db/0259) — klaar en getest, wacht op GO van de eigenaar voor Neon
+- [ ] Herbouw uit db/ gelijktrekken met de uitvoerrechten op Neon (20 functies te ruim voor PUBLIC, workspace_may_drop_suffix zonder rout_app)
 - [x] Briefing in appendix van docs/HANDOVER.md (bijlage B letterlijk, bijlage C controle)
 - [x] QA-testdraaiboek: docs/ROUT-QA-draaiboek.md (kopie in Files)
 - [x] /t-schermen en knoppen in nl/en/fr/de (cardTap.* in interface-bundels); zegel "Authentic ROUT Card" blijft bewust Engels

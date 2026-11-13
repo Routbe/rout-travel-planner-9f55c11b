@@ -75,6 +75,9 @@ use the editor.
 ## SECURITY DEFINER search_path
 - Every SECURITY DEFINER function runs with search_path = pg_catalog, pg_temp (from db/0258; 0255-0257 may still set the bare form during replay); the legacy list in scripts/security-definer-legacy.ts is empty and stays empty, both runners lint every migration from 0255 on by the rule in force at its number and run the guard in scripts/security-definer-policy.ts inside its transaction; `bun scripts/security-definer-check.ts` checks Neon. Why: nothing a caller can place on the path, including its temporary schema, may resolve inside owner-privileged code.
 
+## Function execute rights
+- A SECURITY DEFINER helper that only other definers or triggers call gets `revoke all ... from public, rout_app` in the migration that creates it; rout_app keeps EXECUTE only on functions app code or SECURITY INVOKER code calls. Why: Neon's default privileges grant rout_app EXECUTE on every new function, so revoking only PUBLIC leaves internal helpers callable by the app role.
+
 ## Staged database lockdowns
 - CONTRACT migrations that remove legacy access wait in db-pending/ until production runs the code using the matching EXPAND functions, then move into db/. Why: every file in db/ is replayed by the runners, so a premature contract would break the live deployment.
 - The public health probe reports CODE_SCHEMA_LEVEL (src/lib/schema-version.ts, kept equal to the highest db/ migration by a test); a held-back contract is applied only once production reports at least the level of its EXPAND migration. Why: it is the only outside proof of which code a deployment runs.
