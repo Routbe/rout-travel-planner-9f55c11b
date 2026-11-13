@@ -4,7 +4,8 @@
 --   links and QR, Q&A, subscribers, protocol, PoW, presence, wallet and other
 --   services) leave public / public, pg_temp. Their bodies already name every
 --   table, function and type with its schema (checked against Neon and the
---   snapshot on 2026-11-13; live definitions equal the snapshot).
+--   snapshot on 2026-11-13; live definitions equal the snapshot, except that
+--   rout_pow_spend on Neon has the same body with its line breaks collapsed).
 -- * The 300 definers already on the bare pg_catalog form (0254-0257 and older
 --   pinned functions) get pg_temp named last, so Postgres never searches the
 --   caller's temporary schema first, even if TEMP is ever granted.
