@@ -507,6 +507,7 @@
   "booking.err.slug_taken": "Ce nom court est déjà utilisé.",
   "booking.err.generic": "Une erreur est survenue. Réessayez.",
   "booking.err.invalid": "Vérifiez les champs.",
+  "booking.err.rateLimited": "Vous avez déjà ajouté ou actualisé vos agendas de nombreuses fois cette heure-ci. Réessayez plus tard.",
   "booking.avail.intro": "Vos horaires hebdomadaires, dans votre fuseau.",
   "booking.avail.timezone": "Fuseau horaire",
   "booking.avail.closed": "Fermé",

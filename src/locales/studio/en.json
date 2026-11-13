@@ -507,6 +507,7 @@
   "booking.err.slug_taken": "This short name is already in use.",
   "booking.err.generic": "Something went wrong. Try again.",
   "booking.err.invalid": "Check the fields.",
+  "booking.err.rateLimited": "You've added or refreshed calendars many times this hour. Try again later.",
   "booking.avail.intro": "Your weekly hours, in your timezone.",
   "booking.avail.timezone": "Timezone",
   "booking.avail.closed": "Closed",

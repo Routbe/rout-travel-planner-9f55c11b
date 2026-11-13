@@ -150,6 +150,12 @@ export const saveAvailabilityRules = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Shared per-member cap on calendar fetches; a broken counter refuses rather than lets through. */
+async function calendarFetchAllowed(userId: string): Promise<boolean> {
+  const { allowCalendarFetch } = await import("./calendar-fetch-limit.server");
+  return allowCalendarFetch(userId);
+}
+
 export const addBookingCalendar = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((input: unknown) =>
@@ -159,6 +165,7 @@ export const addBookingCalendar = createServerFn({ method: "POST" })
     ]).parse(input),
   )
   .handler(async ({ data, context }) => {
+    if (!(await calendarFetchAllowed(context.userId))) return { ok: false as const, reason: "rate_limited" };
     // Same outbound gate as the sync itself (shape + DNS), so no internal address is ever stored.
     const { assertCalendarUrl } = await import("./adapters/fetchers.server");
     try {
@@ -189,9 +196,10 @@ export const syncBookingCalendar = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((input: unknown) => z.object({ id: uuid }).parse(input))
   .handler(async ({ data, context }) => {
+    if (!(await calendarFetchAllowed(context.userId))) return { ok: false as const, reason: "rate_limited" as const };
     const s = await import("./manage.server");
     await s.syncNow(context.userId, data.id);
-    return { ok: true };
+    return { ok: true as const };
   });
 
 export const actOnBooking = createServerFn({ method: "POST" })

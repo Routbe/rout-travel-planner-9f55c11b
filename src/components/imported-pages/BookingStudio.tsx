@@ -639,7 +639,7 @@ function Calendars({ data }: { data: Studio }) {
       : { adapter: "caldav" as const, label: form.label || null, credentials: { url: form.url.trim(), username: form.username, password: form.password } };
     const r = await add({ data: payload }).catch(() => ({ ok: false as const, reason: "invalid" }));
     setBusy(null);
-    if (!r.ok) return toast.error(r.reason === "invalid" || r.reason === "invalid_url" ? t("booking.err.invalid") : t("booking.err.generic"));
+    if (!r.ok) return toast.error(r.reason === "rate_limited" ? t("booking.err.rateLimited") : r.reason === "invalid" || r.reason === "invalid_url" ? t("booking.err.invalid") : t("booking.err.generic"));
     toast.success(t("booking.cal.added"));
     setForm({ url: "", label: "", username: "", password: "" });
     await refresh();
@@ -679,7 +679,7 @@ function Calendars({ data }: { data: Studio }) {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button size="sm" variant="soft" disabled={busy === c.id} onClick={async () => { setBusy(c.id); await sync({ data: { id: c.id } }).catch(() => undefined); setBusy(null); await refresh(); }}>
+              <Button size="sm" variant="soft" disabled={busy === c.id} onClick={async () => { setBusy(c.id); const r = await sync({ data: { id: c.id } }).catch(() => undefined); setBusy(null); if (r && !r.ok) toast.error(t("booking.err.rateLimited")); await refresh(); }}>
                 <RefreshCw className={`h-4 w-4 ${busy === c.id ? "animate-spin" : ""}`} />{t("booking.cal.sync")}
               </Button>
               <Button size="sm" variant="ghost" onClick={async () => { await remove({ data: { id: c.id } }); await refresh(); }} aria-label={t("booking.cal.remove")}><Trash2 className="h-4 w-4" /></Button>
