@@ -270,13 +270,17 @@ describe("the runner guard inside a migration transaction", () => {
   it("raises for an unlisted unpinned definer and passes for pinned or listed ones", async () => {
     const db = new PGlite();
     try {
-      await db.exec(`create function public.pinned() returns int language sql security definer set search_path = pg_catalog as $$ select 1 $$;
+      await db.exec(`create function public.pinned() returns int language sql security definer set search_path = pg_catalog, pg_temp as $$ select 1 $$;
         create function public.listed(p int) returns int language sql security definer set search_path = public as $$ select p $$;
         create function public.invoker() returns int language sql set search_path = public as $$ select 1 $$;`);
       await expect(db.exec(definerGuardSql(["public.listed(p integer)"]))).resolves.toBeDefined();
       await expect(db.exec(definerGuardSql([]))).rejects.toThrow(/public\.listed\(p integer\)/);
       await db.exec("create function public.sneaky() returns int language sql security definer set search_path = public, pg_temp as $$ select 1 $$;");
-      await expect(db.exec(definerGuardSql(["public.listed(p integer)"]))).rejects.toThrow(/SECURITY DEFINER without search_path = pg_catalog: public\.sneaky\(\)/);
+      await expect(db.exec(definerGuardSql(["public.listed(p integer)"]))).rejects.toThrow(/SECURITY DEFINER without search_path = pg_catalog, pg_temp: public\.sneaky\(\)/);
+      await db.exec("drop function public.sneaky(); create function public.bare() returns int language sql security definer set search_path = pg_catalog as $$ select 1 $$;");
+      // The bare form of 0255-0257 passes only the guard that runs before 0258.
+      await expect(db.exec(definerGuardSql(["public.listed(p integer)"], false))).resolves.toBeDefined();
+      await expect(db.exec(definerGuardSql(["public.listed(p integer)"]))).rejects.toThrow(/public\.bare\(\)/);
     } finally {
       await db.close();
     }
