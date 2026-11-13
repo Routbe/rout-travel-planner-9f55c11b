@@ -77,6 +77,7 @@ use the editor.
 
 ## Function execute rights
 - A SECURITY DEFINER helper that only other definers or triggers call gets `revoke all ... from public, rout_app` in the migration that creates it; rout_app keeps EXECUTE only on functions app code or SECURITY INVOKER code calls. Why: Neon's default privileges grant rout_app EXECUTE on every new function, so revoking only PUBLIC leaves internal helpers callable by the app role.
+- A replay of db/ must end with the same function EXECUTE rights as Neon (db/0260 recorded them; definer-execute-grants.test.ts guards it); every migration states function grants explicitly instead of relying on default privileges. Why: Neon's default privileges and a fresh replay diverge, and a rebuilt database was both looser for PUBLIC and broken for rout_app.
 
 ## Staged database lockdowns
 - CONTRACT migrations that remove legacy access wait in db-pending/ until production runs the code using the matching EXPAND functions, then move into db/. Why: every file in db/ is replayed by the runners, so a premature contract would break the live deployment.

@@ -62,3 +62,46 @@ describe("0259 removes direct execute on internal definer helpers", () => {
     }
   }, 300_000);
 });
+
+describe("a fresh replay of db/ has Neon's function rights (0260, 0261)", () => {
+  it("keeps PUBLIC off owner-only functions, gives rout_app the helpers its policies and triggers call, and not the orphaned definers", async () => {
+    const { btree_gist } = await import("@electric-sql/pglite/contrib/btree_gist");
+    const { pgcrypto } = await import("@electric-sql/pglite/contrib/pgcrypto");
+    const db = new PGlite({ extensions: { pgcrypto, btree_gist } });
+    const can = async (role: string, fn: string) =>
+      (await db.query<{ ok: boolean }>(`select has_function_privilege($1, $2, 'execute') as ok`, [role, fn])).rows[0]!.ok;
+    try {
+      for (const step of planMigrations(listMigrationFiles(DB_DIR), new Set())) {
+        if (step.action === "run") await db.exec(`begin;\n${readFileSync(join(DB_DIR, step.file), "utf8")}\n;commit;`);
+      }
+      await db.exec("create role rout_check_other nologin");
+      // Money and account functions: never callable by an arbitrary role.
+      for (const f of [
+        "public.wallet_credit(uuid, integer, text, text, text)",
+        "public.wallet_debit(uuid, integer, text, text)",
+        "public.delete_account()",
+        "public.signin_guard_record(text, boolean)",
+        "public.save_profile_draft(uuid, text, jsonb, bigint)",
+      ]) {
+        expect(await can("rout_check_other", f), f).toBe(false);
+        expect(await can("rout_app", f), f).toBe(true);
+      }
+      // Policy and invoker-trigger helpers the app role must reach.
+      for (const f of [
+        "public.rout_current_user_id()",
+        "public.current_app_user_id()",
+        "public.workspace_may_drop_suffix(text, uuid)",
+        "public.assert_handle_namespace_free(text, uuid)",
+      ]) expect(await can("rout_app", f), f).toBe(true);
+      const seq = await db.query<{ ok: boolean }>(`select has_sequence_privilege('rout_app', 'public.calendar_events_id_seq', 'usage') as ok`);
+      expect(seq.rows[0]!.ok).toBe(true);
+      // Orphaned definers (0261).
+      for (const f of ["public.seed_demo_content(uuid)", "public.grant_signup_badges(uuid)", "public.generate_unique_handle(text)"]) {
+        expect(await can("rout_app", f), f).toBe(false);
+        expect(await can("rout_check_other", f), f).toBe(false);
+      }
+    } finally {
+      await db.close();
+    }
+  }, 300_000);
+});
