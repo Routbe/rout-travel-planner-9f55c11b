@@ -1,0 +1,21 @@
+{
+  "source": "https://github.com/Routbe/rout-travel-planner-5e156df2.git",
+  "kind": "source-repository",
+  "importedAt": "2026-11-13",
+  "permissionConfirmed": true,
+  "filesInSource": 3199,
+  "filesCopiedIdentical": 3199,
+  "excluded": [".git"],
+  "credentialsCopied": false,
+  "databaseMigrationsApplied": false,
+  "sourceWebsiteComparison": "Not applicable: repository source imported, not GitHub website UI.",
+  "checks": [
+    {"route": "/", "layout": "desktop", "viewport": {"width": 1280, "height": 1800}, "scrollContainer": "document.scrollingElement", "scrollPosition": 0, "trigger": "page load", "expected": "home renders", "observed": "home renders with globe canvas (2 canvases), no console errors", "status": "passed"},
+    {"route": "/", "layout": "desktop", "viewport": {"width": 1280, "height": 1800}, "scrollContainer": "document.scrollingElement", "scrollPosition": 0, "trigger": "Open menu", "expected": "Platform panel", "observed": "Platform panel with Tools and Infrastructure lists", "status": "passed"},
+    {"route": "/", "layout": "desktop", "trigger": "Escape", "expected": "menu closes", "observed": "dialog removed", "status": "passed"},
+    {"route": "/", "layout": "desktop", "trigger": "wheel scroll to bottom", "observed": "scrollY 20000 of 23453", "status": "passed"},
+    {"route": "/", "layout": "phone", "viewport": {"width": 390, "height": 844}, "trigger": "page load", "observed": "home renders, no console errors", "status": "passed"},
+    {"route": "/", "layout": "phone", "viewport": {"width": 390, "height": 844}, "trigger": "Open menu", "observed": "Platform panel opens; Escape closes it", "status": "passed"},
+    {"route": "sign-in and account pages", "trigger": "sign-in", "observed": "server logs: [auth] no runtime database configured", "status": "blocked"}
+  ]
+}
