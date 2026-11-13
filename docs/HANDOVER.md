@@ -211,3 +211,14 @@ Bijlage F — SECURITY DEFINER-hardening batch 3 (2026-11-13; de tekst hierboven
 - `rout_app` en PUBLIC hebben geen TEMP-recht en `rout_app` mag niets aanmaken in `public` (live gecontroleerd).
 - Tijdelijke batch-3-scripts (`.tmp-b3/`) verwijderd. Volledige suite: 466 testbestanden, 2784 tests geslaagd.
 - Volgende stap: beslissing over `pg_catalog, pg_temp`, daarna batch 4 (48 functies, `db/0258`).
+
+---
+
+Bijlage G — batch 4 en het pg_temp-beleid (2026-11-13; de tekst hierboven is ongewijzigd overgenomen)
+
+- Besluit van de eigenaar: elke SECURITY DEFINER-functie draait met `search_path = pg_catalog, pg_temp`. Met alleen `pg_catalog` doorzoekt Postgres het tijdelijke schema van de aanroeper eerst; door `pg_temp` achteraan te noemen blijft dat dicht, ook als TEMP ooit per ongeluk wordt toegekend. Dit vervangt in de regels hierboven elke vermelding van "alleen `pg_catalog`".
+- `db/0258_definer_search_path_rest_and_pg_temp.sql`: alleen `ALTER FUNCTION ... SET`, voor alle 348 functies: batch 4 (de laatste 48: profielen/handles, feedback/events, korte links/QR, Q&A, abonnees, protocol, PoW, presence, wallet en overige) plus `pg_temp` achteraan bij de 300 die al op `pg_catalog` stonden. `execute_account_merge` is eigendom van `rout_merge_executor`; de migratie leent die rol alleen voor die ene regel en geeft hem terug, zoals 0215 en 0242.
+- Vooraf gecontroleerd: de bodies van de 48 noemen elke tabel, functie en type met schema; live definities gelijk aan de schemakopie (alleen `rout_pow_spend` heeft op Neon dezelfde body met samengevoegde regeleinden).
+- Afdwinging: `scripts/security-definer-policy.ts` accepteert vanaf migratie 0258 alleen `pg_catalog, pg_temp` (0255-0257 mogen in de replay nog de oude vorm hebben); `LEGACY_DEFINER_SEARCH_PATH` is leeg, batch 4 staat onder `HARDENED_BY_MIGRATION[258]`. Test: na het afspelen van alle migraties verandert 0258 niets dan de zoekpad-regel, en de 46 niet-trigger-functies van batch 4 worden aangeroepen zonder een onopgeloste naam.
+- Live op Neon toegepast in één transactie met telcontrole vooraf (348 functies, 48 open) en achteraf (0 open), plus de logboekregel. Daarna: 348 functies op `pg_catalog, pg_temp`, eigenaars en uitvoerrechten ongewijzigd, rollidmaatschappen ongewijzigd, `schema_migrations` 255 rijen, schemaniveau `0258`. Proefaanroepen als `rout_app` (alleen lezen) slaagden.
+- Volledige suite: 466 testbestanden, 2786 tests geslaagd.
