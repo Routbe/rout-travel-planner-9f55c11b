@@ -56,7 +56,9 @@
 - [x] Rechtencorrectie interne hulpfuncties (db/0259, live op Neon, per functie nagekeken)
 - [x] Herbouw uit db/ gelijk aan Neon voor alle functierechten (db/0260, op Neon aantoonbaar zonder effect)
 - [x] db/0261 — drie ongebruikte SECURITY DEFINER-functies weg bij rout_app + samenvoegen met de handle van het tweede account herstellen (live op Neon 2026-11-13, per functie nagekeken)
-- [ ] 17 tabellen/reeksen waar rout_app op Neon meer mag dan in db/ — per tabel schrijvende code nagaan (CONTRACT); GO voor onderzoek, verslag per tabel + SQL-voorstel voor echt alleen-lezen tabellen
+- [x] 17 tabellen/reeksen: onderzoek per tabel klaar (bijlage J); voorstel db-pending/0262 getest
+- [ ] db-pending/0262 — overbodige tabelrechten van rout_app intrekken — wacht op GO van de eigenaar
+- [ ] auth_recovery_requests: RLS zonder policy, herstelaanvragen worden niet opgeslagen — wacht op besluit eigenaar (policies of definer-ingangen)
 - [x] Briefing in appendix van docs/HANDOVER.md (bijlage B letterlijk, bijlage C controle)
 - [x] QA-testdraaiboek: docs/ROUT-QA-draaiboek.md (kopie in Files)
 - [x] /t-schermen en knoppen in nl/en/fr/de (cardTap.* in interface-bundels); zegel "Authentic ROUT Card" blijft bewust Engels
