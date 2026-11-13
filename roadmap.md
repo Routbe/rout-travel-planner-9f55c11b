@@ -47,8 +47,9 @@
 - [x] Afdwinging SECURITY DEFINER search_path: krimpende overgangslijst, lint + bewaking in beide runners vanaf 0255, test op snapshot, live controle (scripts/security-definer-check.ts)
 - [x] Batch 1 — kaarten, kluis, inloggen: 21 functies (db/0255, live op Neon, 0 afwijkingen)
 - [x] Batch 2 — werkruimtes, ouders, agent-sandbox: 36 functies (db/0256, live op Neon, 0 afwijkingen; 79 over)
-- [ ] Batch 3 — boekingen (37 functies met public, pg_temp)
-- [ ] Batch 4 — publieke profielen, korte links, Q&A en overige, 42 functies (tot de overgangslijst leeg is)
+- [x] Batch 3 — boekingen: 31 functies (db/0257, live op Neon, 48 over)
+- [ ] Beslissing pg_temp-beleid (pg_catalog of pg_catalog, pg_temp) — wacht op eigenaar
+- [ ] Batch 4 — de laatste 48 functies (db/0258) tot de overgangslijst leeg is
 - [x] Briefing in appendix van docs/HANDOVER.md (bijlage B letterlijk, bijlage C controle)
 - [x] QA-testdraaiboek: docs/ROUT-QA-draaiboek.md (kopie in Files)
 - [x] /t-schermen en knoppen in nl/en/fr/de (cardTap.* in interface-bundels); zegel "Authentic ROUT Card" blijft bewust Engels

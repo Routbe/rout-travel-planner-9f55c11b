@@ -201,3 +201,13 @@ Bijlage E — SECURITY DEFINER-hardening batch 2 (2026-11-13; de tekst hierboven
 - Correctie op de bewaking uit bijlage D: een lege database speelt 0255 af vóór 0256, dus de bewaking na migratie N staat nu ook toe wat een latere migratie nog vastzet (`HARDENED_BY_MIGRATION` + `legacyAllowedAfter` in `scripts/security-definer-legacy.ts`). Een test koppelt elke groep aan precies de functies die haar migratie aanpast. Op de eindtoestand blijft de lijst gewoon krimpen.
 - Live op Neon toegepast in één transactie, met een telcontrole vooraf (115 open) en achteraf (79 open) en de logboekregel. Daarna: de 79 open functies zijn exact de overgangslijst, de 36 functies zijn gelijk aan de nieuwe schemakopie met ongewijzigde eigenaar en rechten; `schema_migrations` 253 rijen, 0 afwijkingen; schemaniveau `0256`.
 - Volgende batches: boekingen (37 functies), daarna publieke profielen, korte links, Q&A en overige (42).
+
+---
+
+Bijlage F — SECURITY DEFINER-hardening batch 3 (2026-11-13; de tekst hierboven is ongewijzigd overgenomen)
+
+- Batch 3 (boekingen): `db/0257_definer_search_path_bookings.sql` zet 31 functies (`rout_booking_*` e.a.) op `search_path = pg_catalog`. `rout_booking_hold` roept nu expliciet `public.gen_random_bytes()` aan; `rout_booking_zone` leest `pg_catalog.pg_timezone_names`.
+- Live op Neon (gecontroleerd 2026-11-13): `schema_migrations` 254 rijen, hoogste `0257`; 348 SECURITY DEFINER-functies, 300 op `pg_catalog`, 48 open (exact de overgangslijst). Alle 229 tabellen/views in Neon zijn gelijk aan `db/schema.snapshot.json` (alleen `schema_migrations` zelf staat er niet in). Schemaniveau code en Neon: `0257`.
+- `rout_app` en PUBLIC hebben geen TEMP-recht en `rout_app` mag niets aanmaken in `public` (live gecontroleerd).
+- Tijdelijke batch-3-scripts (`.tmp-b3/`) verwijderd. Volledige suite: 466 testbestanden, 2784 tests geslaagd.
+- Volgende stap: beslissing over `pg_catalog, pg_temp`, daarna batch 4 (48 functies, `db/0258`).
