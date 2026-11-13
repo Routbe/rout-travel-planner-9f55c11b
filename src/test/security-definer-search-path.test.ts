@@ -605,7 +605,8 @@ describe("batch 4 and pg_temp after 0258 (all migrations replayed)", () => {
         await db.exec("rollback");
       }
       expect(problems).toEqual([]);
-      expect(new Set(called).size).toBe(batch4.size - 1); // enforce_short_link_limits is a trigger
+      // enforce_short_link_limits and rout_shadow_mute_trust are triggers; the other 46 are called.
+      expect(new Set(called).size).toBe(batch4.size - 2);
     } finally {
       await db.close();
     }
