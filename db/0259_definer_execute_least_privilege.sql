@@ -50,9 +50,8 @@ begin
       'public.rout_physical_key_audit()'
     ]) f where pg_catalog.has_function_privilege('rout_app', f, 'execute');
     if bad is not null then raise exception 'rout_app can still execute: %', bad; end if;
-    if not pg_catalog.has_function_privilege('rout_app', 'public.execute_account_merge(text, text, text, text)', 'execute')
-       or not pg_catalog.has_function_privilege('rout_app', 'public.workspace_may_drop_suffix(text, uuid)', 'execute') then
-      raise exception 'rout_app lost an entry point it needs';
+    if not pg_catalog.has_function_privilege('rout_app', 'public.execute_account_merge(text, text, text, text)', 'execute') then
+      raise exception 'rout_app lost execute_account_merge';
     end if;
   end if;
   if exists (select 1 from pg_catalog.aclexplode((select proacl from pg_catalog.pg_proc

@@ -42,6 +42,7 @@ describe("0259 removes direct execute on internal definer helpers", () => {
       }
       // The state found on Neon before 0259.
       for (const f of HELPERS) await db.exec(`grant execute on function ${f} to rout_app`);
+      await db.exec(`grant execute on function public.workspace_may_drop_suffix(text, uuid) to rout_app`);
       await db.exec(`grant rout_merge_executor to current_user; grant execute on function ${MERGE} to public; revoke rout_merge_executor from current_user;`);
       for (const f of HELPERS) expect(await can("rout_app", f), f).toBe(true);
       expect(await publicOnMerge()).toBe(true);
