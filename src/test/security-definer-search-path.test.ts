@@ -532,3 +532,82 @@ describe("batch 3 booking functions after 0257 (all migrations replayed)", () =>
     }
   }, 180_000);
 });
+
+describe("batch 4 and pg_temp after 0258 (all migrations replayed)", () => {
+  it("0258 changes only the search_path line, every definer ends on pg_catalog, pg_temp, and the last 48 resolve every name they reach", async () => {
+    const { btree_gist } = await import("@electric-sql/pglite/contrib/btree_gist");
+    const { pgcrypto } = await import("@electric-sql/pglite/contrib/pgcrypto");
+    const { planMigrations } = await import("../../scripts/migration-plan");
+    const db = new PGlite({ extensions: { pgcrypto, btree_gist } });
+    const REST = "0258_definer_search_path_rest_and_pg_temp.sql";
+    const definerDefs = async () =>
+      new Map(
+        (await db.query<{ k: string; d: string }>(
+          `select n.nspname || '.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' as k, pg_get_functiondef(p.oid) as d
+             from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+            where p.prosecdef and n.nspname not in ('pg_catalog', 'information_schema')
+              and not exists (select 1 from pg_depend x where x.classid = 'pg_proc'::regclass and x.objid = p.oid and x.deptype = 'e')`,
+        )).rows.map((r) => [r.k, r.d]),
+      );
+    try {
+      for (const step of planMigrations(listMigrationFiles(DB_DIR), new Set())) {
+        if (step.action === "run" && step.file !== REST) await db.exec(`begin;\n${readFileSync(join(DB_DIR, step.file), "utf8")}\n;commit;`);
+      }
+      const before = await definerDefs();
+      await db.exec(`begin;\n${readFileSync(join(DB_DIR, REST), "utf8")}\n;commit;`);
+      const after = await definerDefs();
+      expect(after.size).toBe(before.size);
+      const strip = (d: string) => d.replace(/^ SET search_path TO .*$/m, "");
+      for (const [k, d] of before) {
+        expect(strip(after.get(k)!), k).toBe(strip(d));
+        expect(searchPathFromDef(after.get(k)!), k).toEqual(["pg_catalog", "pg_temp"]);
+      }
+      await expect(db.exec(definerGuardSql([]))).resolves.toBeDefined();
+
+      // Call every batch 4 function (triggers excepted) with empty and with sample
+      // arguments. Business errors are fine; an unresolved table, function, type,
+      // column or schema is not.
+      const UNRESOLVED = new Set(["42P01", "42883", "42704", "42703", "3F000"]);
+      const sample: Record<string, string> = {
+        text: "'x'", uuid: "'00000000-0000-4000-8000-0000000000c1'::uuid", integer: "1", bigint: "1", boolean: "true",
+        "timestamp with time zone": "now() + interval '1 hour'", jsonb: "'{}'::jsonb", "text[]": "'{}'::text[]",
+      };
+      const fns = (
+        await db.query<{ k: string; fn: string; types: string[]; trig: boolean }>(
+          `select p.oid::regprocedure::text as k, p.oid::regproc::text as fn,
+                  coalesce(array(select pg_catalog.format_type(t, null) from unnest(p.proargtypes) t), '{}') as types,
+                  p.prorettype = 'trigger'::regtype as trig
+             from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosecdef`,
+        )
+      ).rows;
+      const batch4 = new Set(HARDENED_BY_MIGRATION[258]!.map((k) => k.match(/^public\.(\w+)\(/)![1]));
+      const called: string[] = [];
+      const problems: string[] = [];
+      await db.exec("begin");
+      try {
+        for (const f of fns) {
+          const name = f.fn.replace(/^public\./, "");
+          if (!batch4.has(name) || f.trig) continue;
+          called.push(name);
+          for (const variant of ["null", "sample"]) {
+            const args = f.types.map((t) => (variant === "null" ? `null::${t}` : sample[t] ?? `null::${t}`)).join(", ");
+            await db.exec("savepoint s");
+            try {
+              await db.query(`select * from public.${name}(${args})`);
+            } catch (error) {
+              const code = (error as { code?: string }).code ?? "";
+              if (UNRESOLVED.has(code)) problems.push(`${f.k} [${variant}]: ${code} ${(error as Error).message}`);
+            }
+            await db.exec("rollback to savepoint s");
+          }
+        }
+      } finally {
+        await db.exec("rollback");
+      }
+      expect(problems).toEqual([]);
+      expect(new Set(called).size).toBe(batch4.size - 1); // enforce_short_link_limits is a trigger
+    } finally {
+      await db.close();
+    }
+  }, 240_000);
+});
