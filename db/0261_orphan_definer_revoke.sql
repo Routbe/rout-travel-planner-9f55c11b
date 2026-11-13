@@ -1,4 +1,4 @@
--- 0261 — Three SECURITY DEFINER functions that nothing calls are no longer
+-- 0261 — Three orphaned SECURITY DEFINER functions leave rout_app, and the account merge executor may run the handle check.
 -- callable by the app role. seed_demo_content(_user_id) and
 -- grant_signup_badges(_user_id) write demo content and badges for any member id
 -- they are given; generate_unique_handle reads every handle. No app code calls
@@ -22,3 +22,11 @@ begin
     end if;
   end loop;
 end $$;
+
+-- execute_account_merge runs as rout_merge_executor. Keeping the secondary
+-- handle updates profiles.username, whose invoker trigger
+-- profiles_handle_namespace_guard calls assert_handle_namespace_free with that
+-- role's rights. On Neon that function has no PUBLIC grant (and since 0260 a
+-- replay has none either), so the merge failed with "permission denied";
+-- found by account-merge-postgres.test.ts. The executor gets exactly this one.
+grant execute on function public.assert_handle_namespace_free(text, uuid) to rout_merge_executor;
