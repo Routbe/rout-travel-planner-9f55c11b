@@ -41,7 +41,9 @@ revoke execute on function public.touch_updated_at() from public;
 revoke execute on function public.wallet_credit(_user_id uuid, _amount_cents integer, _kind text, _description text, _reference text) from public;
 revoke execute on function public.wallet_debit(_user_id uuid, _amount_cents integer, _description text, _reference text) from public;
 
--- rout_app keeps or gets EXECUTE it has on Neon (59 functions)
+-- rout_app keeps or gets EXECUTE it has on Neon (56 functions). Not granted
+-- here: seed_demo_content, grant_signup_badges and generate_unique_handle,
+-- SECURITY DEFINER functions nothing calls; 0261 takes them from rout_app on Neon.
 grant execute on function auth.jwt() to rout_app;
 grant execute on function auth.role() to rout_app;
 grant execute on function auth.uid() to rout_app;
@@ -58,12 +60,10 @@ grant execute on function public.disclosure_no_rewrite() to rout_app;
 grant execute on function public.enforce_short_link_limits() to rout_app;
 grant execute on function public.enforce_workspace_root_alias() to rout_app;
 grant execute on function public.enforce_workspace_slug_suffix() to rout_app;
-grant execute on function public.generate_unique_handle(_seed text) to rout_app;
 grant execute on function public.get_my_account() to rout_app;
 grant execute on function public.get_my_profile() to rout_app;
 grant execute on function public.get_public_profile(_username text) to rout_app;
 grant execute on function public.grant_early_verified_promo() to rout_app;
-grant execute on function public.grant_signup_badges(_user_id uuid) to rout_app;
 grant execute on function public.handle_new_user() to rout_app;
 grant execute on function public.has_role(_user_id uuid, _role app_role) to rout_app;
 grant execute on function public.identity_event_chain() to rout_app;
@@ -88,7 +88,6 @@ grant execute on function public.rout_vp_json(v verification_payments) to rout_a
 grant execute on function public.save_profile_draft(p_user_id uuid, p_space text, p_payload jsonb, p_expected_revision bigint) to rout_app;
 grant execute on function public.security_audit_chain() to rout_app;
 grant execute on function public.security_audit_refuse() to rout_app;
-grant execute on function public.seed_demo_content(_user_id uuid) to rout_app;
 grant execute on function public.short_link_stats(_token text) to rout_app;
 grant execute on function public.signin_guard_record(_identity_hash text, _success boolean) to rout_app;
 grant execute on function public.signin_guard_status(_identity_hash text) to rout_app;
