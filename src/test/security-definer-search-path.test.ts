@@ -217,7 +217,11 @@ describe("migration files from 0255 on", () => {
 
   it("0258 only sets search_path = pg_catalog, pg_temp, once for every SECURITY DEFINER function in the snapshot", () => {
     const sql = readFileSync(join(DB_DIR, "0258_definer_search_path_rest_and_pg_temp.sql"), "utf8").replace(/--[^\n]*/g, "");
-    const statements = sql.split(";").map((s) => s.trim()).filter(Boolean);
+    const OWN = /^do \$own\$ begin execute format\('(grant rout_merge_executor to %I with inherit true, set true|revoke rout_merge_executor from %I)', current_user\); end \$own\$$/;
+    const all = sql.split(/;\n/).map((s) => s.trim().replace(/;$/, "")).filter(Boolean);
+    // Only the borrowed owner role around execute_account_merge, as in 0215/0242.
+    expect(all.filter((s) => OWN.test(s))).toHaveLength(2);
+    const statements = all.filter((s) => !OWN.test(s));
     expect(statements).toHaveLength(definers.length);
     const keys = statements.map((s) => s.match(/^alter function (.+) set search_path = pg_catalog, pg_temp$/)?.[1]);
     expect(keys.every(Boolean)).toBe(true);

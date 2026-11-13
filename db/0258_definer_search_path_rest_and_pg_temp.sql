@@ -66,7 +66,6 @@ alter function public.delete_account() set search_path = pg_catalog, pg_temp;
 alter function public.disclosure_chain_insert() set search_path = pg_catalog, pg_temp;
 alter function public.disclosure_head_advance() set search_path = pg_catalog, pg_temp;
 alter function public.email_freeze_owner(token_hash text) set search_path = pg_catalog, pg_temp;
-alter function public.execute_account_merge(p_ticket_digest text, p_code_digest text, p_keep_handle text, p_keep_design text) set search_path = pg_catalog, pg_temp;
 alter function public.grant_early_verified_promo() set search_path = pg_catalog, pg_temp;
 alter function public.handle_new_user() set search_path = pg_catalog, pg_temp;
 alter function public.public_app_credentials(p_handle text) set search_path = pg_catalog, pg_temp;
@@ -362,3 +361,9 @@ alter function vault_enclave.sdm_tap_fleet_keys() set search_path = pg_catalog, 
 alter function vault_enclave.server_key_active() set search_path = pg_catalog, pg_temp;
 alter function vault_enclave.server_key_get(p_kid bytea) set search_path = pg_catalog, pg_temp;
 alter function vault_enclave.store_opaque_token(p_token_type text, p_encrypted_payload bytea) set search_path = pg_catalog, pg_temp;
+
+-- execute_account_merge belongs to rout_merge_executor (0152); borrow that role
+-- only for this statement, as 0215 and 0242 do, then give it back.
+do $own$ begin execute format('grant rout_merge_executor to %I with inherit true, set true', current_user); end $own$;
+alter function public.execute_account_merge(p_ticket_digest text, p_code_digest text, p_keep_handle text, p_keep_design text) set search_path = pg_catalog, pg_temp;
+do $own$ begin execute format('revoke rout_merge_executor from %I', current_user); end $own$;
